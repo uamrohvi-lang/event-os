@@ -1,26 +1,114 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+/* ============================================================
+   EVENT OS — Design System
+   ============================================================ */
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  /* --- Brand Colours --- */
+  --color-brand-navy:   #1A3C5E;
+  --color-brand-teal:   #0F6E56;
+  --color-brand-purple: #534AB7;
+  --color-brand-frost:  #F5F7FA;
+
+  /* --- Semantic Colours --- */
+  --color-signal-green: #639922;
+  --color-signal-amber: #EF9F27;
+  --color-signal-red:   #E24B4A;
+  --color-signal-blue:  #185FA5;
+  --color-signal-grey:  #888780;
+
+  /* --- Department Colours --- */
+  --color-dept-stage:       #0F6E56;
+  --color-dept-av:          #534AB7;
+  --color-dept-hospitality: #854F0B;
+  --color-dept-security:    #185FA5;
+  --color-dept-media:       #993C1D;
+  --color-dept-ops:         #3B6D11;
+
+  /* --- Surface / Background --- */
+  --color-surface:          #FFFFFF;
+  --color-surface-2:        #F5F7FA;
+  --color-surface-3:        #EDEEF0;
+  --color-border:           #DDE0E4;
+  --color-border-strong:    #B0B3B8;
+
+  /* --- Text --- */
+  --color-text-primary:   #111827;
+  --color-text-secondary: #6B7280;
+  --color-text-muted:     #9CA3AF;
+  --color-text-inverse:   #FFFFFF;
+
+  /* --- Typography --- */
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: ui-monospace, "Cascadia Code", "Source Code Pro", Menlo, monospace;
+
+  /* --- Radii --- */
+  --radius-sm:  4px;
+  --radius-md:  8px;
+  --radius-lg:  12px;
+  --radius-xl:  16px;
+  --radius-full: 9999px;
+
+  /* --- Shadows --- */
+  --shadow-card: 0 1px 3px 0 rgb(0 0 0 / 0.08), 0 1px 2px -1px rgb(0 0 0 / 0.04);
+  --shadow-modal: 0 20px 60px -10px rgb(0 0 0 / 0.18);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* ============================================================
+   BASE STYLES
+   ============================================================ */
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html {
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: var(--color-surface-2);
+  color: var(--color-text-primary);
+  font-family: var(--font-sans);
+  line-height: 1.5;
+}
+
+/* Tabular numbers on all numeric/time contexts */
+.tabular-nums,
+time,
+[data-timecode],
+.badge,
+.workload-count {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ============================================================
+   SCROLLBAR (webkit)
+   ============================================================ */
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-border-strong);
+  border-radius: var(--radius-full);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-signal-grey);
+}
+
+/* ============================================================
+   FOCUS
+   ============================================================ */
+
+:focus-visible {
+  outline: 2px solid var(--color-brand-teal);
+  outline-offset: 2px;
 }
