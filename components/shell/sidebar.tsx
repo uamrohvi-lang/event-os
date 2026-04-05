@@ -11,18 +11,20 @@ import {
   ClipboardList,
   LogOut,
   ChevronDown,
+  Clock,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 
 const NAV_ITEMS = [
-  { label: "Events",     href: "/",         icon: CalendarDays },
-  { label: "Activity",   href: "/threads",   icon: MessageSquare },
-  { label: "Workload",   href: "/workload",  icon: BarChart2 },
-  { label: "Tasks",      href: "/tasks",     icon: CheckSquare },
-  { label: "Team",       href: "/team",      icon: Users },
-  { label: "Standup",    href: "/standup",   icon: ClipboardList },
+  { label: "Events",     href: "/",              icon: CalendarDays },
+  { label: "Activity",   href: "/threads",        icon: MessageSquare },
+  { label: "Workload",   href: "/workload",       icon: BarChart2 },
+  { label: "Tasks",      href: "/tasks",          icon: CheckSquare },
+  { label: "Team",       href: "/team",           icon: Users },
+  { label: "Shifts",     href: "/team/shifts",    icon: Clock },
+  { label: "Standup",    href: "/standup",        icon: ClipboardList },
 ];
 
 interface SidebarProps {

@@ -42,6 +42,48 @@ export function ThreadPanel({ thread, onClose }: ThreadPanelProps) {
   const [submitting, setSubmitting] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
+  // Realtime subscription — live updates from other team members
+  useEffect(() => {
+    const supabase = createClient();
+    const channel = supabase
+      .channel(`thread:${thread.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "thread_entries",
+          filter: `thread_id=eq.${thread.id}`,
+        },
+        (payload) => {
+          const newEntry = payload.new as ThreadEntry;
+          setEntries((prev) => {
+            // Ignore if already present (optimistic insert)
+            if (prev.some((e) => e.id === newEntry.id)) return prev;
+            return [...prev, newEntry];
+          });
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "thread_entries",
+          filter: `thread_id=eq.${thread.id}`,
+        },
+        (payload) => {
+          const updated = payload.new as ThreadEntry;
+          setEntries((prev) =>
+            prev.map((e) => (e.id === updated.id ? updated : e))
+          );
+        }
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [thread.id]);
+
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [entries]);

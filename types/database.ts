@@ -656,7 +656,23 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_shift_clashes: {
+        Args: {
+          p_end_time: string
+          p_exclude_id?: string
+          p_person_id: string
+          p_shift_date: string
+          p_start_time: string
+        }
+        Returns: {
+          end_time: string
+          event_id: string
+          id: string
+          role_note: string
+          shift_date: string
+          start_time: string
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never
