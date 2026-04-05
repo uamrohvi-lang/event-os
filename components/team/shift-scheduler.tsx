@@ -78,20 +78,21 @@ export function ShiftScheduler({ people, events }: ShiftSchedulerProps) {
   });
 
   return (
-    <>
-      {/* Header */}
-      <div className="flex items-center justify-between mb-5">
-        <div>
-          <h1 className="text-xl font-semibold text-[var(--color-text-primary)]">Shift Scheduler</h1>
-          <p className="text-xs text-[var(--color-text-secondary)] mt-0.5">
-            {shifts.length} shift{shifts.length !== 1 ? "s" : ""} scheduled
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
+    <div style={{ display: "flex", flexDirection: "column", height: "100%", overflow: "hidden" }}>
+      {/* Topbar */}
+      <div style={{
+        height: 54, background: "var(--surface)", borderBottom: "1px solid var(--border)",
+        display: "flex", alignItems: "center", padding: "0 24px", gap: 12, flexShrink: 0,
+      }}>
+        <span style={{ fontSize: 15, fontWeight: 600 }}>Shift Scheduler</span>
+        <span style={{ fontSize: 12, color: "var(--t3)" }}>
+          {shifts.length} shift{shifts.length !== 1 ? "s" : ""} scheduled
+        </span>
+        <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 10 }}>
           <select
             value={selectedEvent}
             onChange={(e) => handleEventChange(e.target.value)}
-            className="rounded-lg border border-[var(--color-border)] px-3 py-2 text-sm bg-white focus:outline-none"
+            style={{ width: "auto" }}
           >
             <option value="">— Select event —</option>
             {events.map((ev) => (
@@ -99,16 +100,17 @@ export function ShiftScheduler({ people, events }: ShiftSchedulerProps) {
             ))}
           </select>
           <button
+            className="btn btn-primary btn-sm"
             onClick={() => setShowAdd(true)}
             disabled={!selectedEvent}
-            className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-white disabled:opacity-50"
-            style={{ background: "var(--color-brand-teal)" }}
           >
-            <Plus className="h-4 w-4" />
-            Add shift
+            + Add shift
           </button>
+          <div className="av">SR</div>
         </div>
       </div>
+      <div style={{ padding: "20px 24px", overflowY: "auto", flex: 1 }}>
+      {/* legacy header placeholder removed */}
 
       {/* Shift grid */}
       {loadingShifts ? (
@@ -178,7 +180,8 @@ export function ShiftScheduler({ people, events }: ShiftSchedulerProps) {
           onAdded={handleShiftAdded}
         />
       )}
-    </>
+      </div>
+    </div>
   );
 }
 

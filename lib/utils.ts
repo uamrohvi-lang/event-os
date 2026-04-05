@@ -38,14 +38,14 @@ export function initials(name: string): string {
     .join("");
 }
 
-/** Department colour map — returns Tailwind-style CSS variable */
+/** Department colour map */
 export const DEPT_COLOURS: Record<string, string> = {
-  stage:       "var(--color-dept-stage)",
-  av:          "var(--color-dept-av)",
-  hospitality: "var(--color-dept-hospitality)",
-  security:    "var(--color-dept-security)",
-  media:       "var(--color-dept-media)",
-  ops:         "var(--color-dept-ops)",
-  production:  "var(--color-dept-stage)",
-  other:       "var(--color-signal-grey)",
+  stage:       "#0F6E56",
+  av:          "#534AB7",
+  hospitality: "#854F0B",
+  security:    "#185FA5",
+  media:       "#993C1D",
+  ops:         "#3B6D11",
+  production:  "#0F6E56",
+  other:       "#6B7280",
 };

@@ -28,11 +28,13 @@ type Thread = {
 interface ThreadPanelProps {
   // entries from the DB query are partial — cast to full type inside the component
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  thread: Thread & { entries: any[] };
-  onClose: () => void;
+  thread: Omit<Thread, "urgency_level"> & { urgency_level?: string; entries: any[] };
+  onBack?: () => void;
+  onClose?: () => void;
+  people?: { id: string; full_name: string }[];
 }
 
-export function ThreadPanel({ thread, onClose }: ThreadPanelProps) {
+export function ThreadPanel({ thread, onClose, onBack }: ThreadPanelProps) {
   const [entries, setEntries] = useState<ThreadEntry[]>(
     ([...(thread.entries ?? [])] as ThreadEntry[]).sort(
       (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()

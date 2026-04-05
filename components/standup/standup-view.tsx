@@ -1,10 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { ClipboardList, CheckCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { initials, DEPT_COLOURS, cn } from "@/lib/utils";
 
 type StandupEntry = {
   id: string;
@@ -20,11 +18,27 @@ interface StandupViewProps {
   entries: StandupEntry[];
   myPersonId: string | null;
   today: string;
+  userName?: string;
 }
 
-export function StandupView({ entries, myPersonId, today }: StandupViewProps) {
+const AV_COLORS = [
+  { bg: "#FAECE7", color: "#712B13" },
+  { bg: "#E6F1FB", color: "#0C447C" },
+  { bg: "#E1F5EE", color: "#085041" },
+  { bg: "#EEEDFE", color: "#3C3489" },
+  { bg: "#FAEEDA", color: "#633806" },
+];
+
+function getAv(name: string) {
+  return AV_COLORS[name.charCodeAt(0) % AV_COLORS.length];
+}
+function getInitials(name: string) {
+  return name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase();
+}
+
+export function StandupView({ entries, myPersonId, today, userName }: StandupViewProps) {
   const router = useRouter();
-  const [showForm, setShowForm] = useState(false);
+  const [step, setStep] = useState(0); // 0=not started, 1=q1, 2=q2, 3=q3, 4=done
   const [yesterday, setYesterday] = useState("");
   const [todayText, setTodayText] = useState("");
   const [blocked, setBlocked] = useState("");
@@ -34,205 +48,251 @@ export function StandupView({ entries, myPersonId, today }: StandupViewProps) {
   const myEntry = entries.find((e) => e.person_id === myPersonId);
   const hasSubmitted = !!myEntry;
 
-  const formattedDate = new Date(today).toLocaleDateString("en-GB", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
+  const formattedDate = new Date(today + "T00:00:00").toLocaleDateString("en-GB", {
+    weekday: "long", day: "numeric", month: "long", year: "numeric",
   });
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  async function handleSubmit() {
     if (!myPersonId) return;
     setSubmitting(true);
     setError(null);
 
     const supabase = createClient();
-
-    // Get event_id — use first event available
     const { data: { user } } = await supabase.auth.getUser();
-    const { data: profile } = await supabase
-      .from("users")
-      .select("organisation_id")
-      .eq("id", user?.id ?? "")
-      .single();
+    const { data: profile } = await supabase.from("users").select("organisation_id").eq("id", user?.id ?? "").single();
+    const { data: events } = await supabase.from("events").select("id").eq("organisation_id", profile?.organisation_id ?? "").limit(1);
 
-    const { data: events } = await supabase
-      .from("events")
-      .select("id")
-      .eq("organisation_id", profile?.organisation_id ?? "")
-      .limit(1);
+    if (!events?.[0]) { setError("No event found"); setSubmitting(false); return; }
 
-    if (!events?.[0]) {
-      setError("No event found — create an event first");
-      setSubmitting(false);
-      return;
-    }
+    const { error: err } = await supabase.from("standup_entries").upsert({
+      event_id: events[0].id,
+      person_id: myPersonId,
+      entry_date: today,
+      yesterday_text: yesterday || null,
+      today_text: todayText || null,
+      blocked_text: blocked || null,
+    }, { onConflict: "event_id,person_id,entry_date" });
 
-    const { error: err } = await supabase
-      .from("standup_entries")
-      .upsert({
-        event_id: events[0].id,
-        person_id: myPersonId,
-        entry_date: today,
-        yesterday_text: yesterday || null,
-        today_text: todayText || null,
-        blocked_text: blocked || null,
-      }, { onConflict: "event_id,person_id,entry_date" });
-
-    if (err) {
-      setError(err.message);
-      setSubmitting(false);
-      return;
-    }
-
-    setShowForm(false);
+    if (err) { setError(err.message); setSubmitting(false); return; }
+    setStep(4);
     router.refresh();
   }
 
+  const prevEntry = entries.find((e) => e.person_id === myPersonId);
+
   return (
-    <>
-      {/* Header */}
-      <div className="flex items-start justify-between mb-6">
-        <div>
-          <h1 className="text-xl font-semibold text-[var(--color-text-primary)]">Standup</h1>
-          <p className="text-sm text-[var(--color-text-secondary)] mt-0.5">{formattedDate}</p>
+    <div style={{ display: "flex", flexDirection: "column", height: "100%", overflow: "hidden" }}>
+      {/* Topbar */}
+      <div style={{
+        height: 54, background: "var(--surface)", borderBottom: "1px solid var(--border)",
+        display: "flex", alignItems: "center", padding: "0 24px", flexShrink: 0,
+      }}>
+        <span style={{ fontSize: 15, fontWeight: 600 }}>Daily Standup</span>
+        <div style={{ marginLeft: "auto" }}>
+          <div className="av">{userName ? getInitials(userName) : "SR"}</div>
         </div>
-        {myPersonId && !hasSubmitted && !showForm && (
-          <button
-            onClick={() => setShowForm(true)}
-            className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-white"
-            style={{ background: "var(--color-brand-teal)" }}
-          >
-            <ClipboardList className="h-4 w-4" />
-            Submit standup
-          </button>
-        )}
       </div>
 
-      {/* My standup form */}
-      {showForm && (
-        <div className="rounded-xl bg-white border border-[var(--color-brand-teal)]/30 p-5 mb-6">
-          <h2 className="text-sm font-semibold text-[var(--color-text-primary)] mb-4">
-            Your standup for today
-          </h2>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-[var(--color-text-primary)] mb-1.5">
-                What did you do yesterday?
-              </label>
+      <div style={{ padding: "20px 24px", overflowY: "auto", flex: 1 }}>
+        <div style={{ maxWidth: 600, margin: "0 auto" }}>
+          {/* Header */}
+          <div style={{ textAlign: "center", marginBottom: 32, paddingTop: 24 }}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: "var(--t3)", textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>
+              {formattedDate}
+            </div>
+            <h1 style={{ fontSize: 26, fontWeight: 600, letterSpacing: -0.5, color: "var(--t1)", marginBottom: 6 }}>
+              {step === 4 || hasSubmitted ? "Standup submitted ✓" : `Good morning${userName ? `, ${userName.split(" ")[0]}` : ""} 👋`}
+            </h1>
+            <p style={{ fontSize: 14, color: "var(--t3)" }}>
+              {step === 4 || hasSubmitted ? "Your standup has been logged for today" : "Daily standup — takes about 60 seconds"}
+            </p>
+          </div>
+
+          {/* Progress dots */}
+          {step > 0 && step < 4 && (
+            <div style={{ display: "flex", justifyContent: "center", gap: 8, marginBottom: 28 }}>
+              {[1, 2, 3].map((s) => (
+                <div key={s} style={{
+                  width: 8, height: 8, borderRadius: "50%",
+                  background: s < step ? "var(--teal)" : s === step ? "var(--navy)" : "var(--border)",
+                }} />
+              ))}
+            </div>
+          )}
+
+          {/* Not started */}
+          {step === 0 && !hasSubmitted && (
+            <div style={{ textAlign: "center", marginBottom: 24 }}>
+              <button className="btn btn-primary" style={{ padding: "12px 32px", fontSize: 15 }} onClick={() => setStep(1)}>
+                Start standup →
+              </button>
+            </div>
+          )}
+
+          {/* Q1 */}
+          {step === 1 && (
+            <div style={{ background: "var(--surface)", borderRadius: 16, border: "1px solid var(--border)", padding: 28, marginBottom: 14 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "var(--teal)", textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>
+                Question 1 of 3
+              </div>
+              <div style={{ fontSize: 18, fontWeight: 600, color: "var(--t1)", letterSpacing: -0.3, marginBottom: 16 }}>
+                What did you move forward yesterday?
+              </div>
+              <div style={{ fontSize: 12, color: "var(--t3)", marginBottom: 12, fontStyle: "italic" }}>
+                Briefly — completed tasks, calls made, decisions reached
+              </div>
               <textarea
                 value={yesterday}
                 onChange={(e) => setYesterday(e.target.value)}
-                rows={2}
-                className={textareaCls}
-                placeholder="Completed venue walkthrough, confirmed AV supplier…"
+                placeholder="e.g. Confirmed AV supplier, completed venue walkthrough, sent catering brief…"
+                style={{ minHeight: 80, resize: "vertical" }}
               />
+              <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 16 }}>
+                <button className="btn btn-primary" onClick={() => setStep(2)}>Next →</button>
+              </div>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-[var(--color-text-primary)] mb-1.5">
-                What are you doing today?
-              </label>
+          )}
+
+          {/* Q2 */}
+          {step === 2 && (
+            <div style={{ background: "var(--surface)", borderRadius: 16, border: "1px solid var(--border)", padding: 28, marginBottom: 14 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "var(--teal)", textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>
+                Question 2 of 3
+              </div>
+              <div style={{ fontSize: 18, fontWeight: 600, color: "var(--t1)", letterSpacing: -0.3, marginBottom: 16 }}>
+                What are you focused on today?
+              </div>
+              <div style={{ fontSize: 12, color: "var(--t3)", marginBottom: 12, fontStyle: "italic" }}>
+                Be specific — this feeds the PM workload view
+              </div>
               <textarea
                 value={todayText}
                 onChange={(e) => setTodayText(e.target.value)}
-                rows={2}
-                className={textareaCls}
-                placeholder="Finalise catering brief, brief production crew…"
+                placeholder="e.g. Finalising the speaker transfer schedule, chasing freight forwarder on customs clearance…"
+                style={{ minHeight: 80, resize: "vertical" }}
               />
+              <div style={{ display: "flex", justifyContent: "space-between", marginTop: 16 }}>
+                <button className="btn btn-out" onClick={() => setStep(1)}>← Back</button>
+                <button className="btn btn-primary" onClick={() => setStep(3)}>Next →</button>
+              </div>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-[var(--color-text-primary)] mb-1.5">
-                Any blockers?
-              </label>
+          )}
+
+          {/* Q3 */}
+          {step === 3 && (
+            <div style={{ background: "var(--surface)", borderRadius: 16, border: "1px solid var(--border)", padding: 28, marginBottom: 14 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "var(--teal)", textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 }}>
+                Question 3 of 3
+              </div>
+              <div style={{ fontSize: 18, fontWeight: 600, color: "var(--t1)", letterSpacing: -0.3, marginBottom: 16 }}>
+                Is anything blocked or at risk?
+              </div>
               <textarea
                 value={blocked}
                 onChange={(e) => setBlocked(e.target.value)}
-                rows={1}
-                className={cn(
-                  textareaCls,
-                  blocked && "border-[var(--color-signal-amber)] focus:border-[var(--color-signal-amber)]"
-                )}
-                placeholder="None — or describe what's blocking you"
+                placeholder="Optional — flag if something is stuck or you need help"
+                style={{ minHeight: 60, resize: "vertical" }}
               />
+              {error && <p style={{ color: "var(--red)", fontSize: 13, marginTop: 8 }}>{error}</p>}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 16 }}>
+                <button
+                  style={{
+                    display: "flex", alignItems: "center", gap: 6,
+                    padding: "7px 12px", borderRadius: 8, fontSize: 12, fontWeight: 500,
+                    cursor: "pointer", background: "var(--red-l)", color: "var(--red)", border: "none",
+                    fontFamily: "var(--font)",
+                  }}
+                >
+                  🚨 Flag urgent issue
+                </button>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <span style={{ fontSize: 11, color: "var(--t3)" }}>
+                    {(yesterday + todayText + blocked).length} / 500
+                  </span>
+                  <button
+                    className="btn btn-primary"
+                    style={{ padding: "10px 24px", fontSize: 14, fontWeight: 600, borderRadius: 10 }}
+                    onClick={handleSubmit}
+                    disabled={submitting}
+                  >
+                    {submitting ? "Submitting…" : "Submit standup →"}
+                  </button>
+                </div>
+              </div>
             </div>
-            {error && <p className="text-sm text-[var(--color-signal-red)]">{error}</p>}
-            <div className="flex justify-end gap-2">
-              <button type="button" onClick={() => setShowForm(false)} className="rounded-lg px-4 py-2 text-sm text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-2)]">Cancel</button>
-              <button type="submit" disabled={submitting} className="rounded-lg px-4 py-2 text-sm font-semibold text-white disabled:opacity-60" style={{ background: "var(--color-brand-teal)" }}>
-                {submitting ? "Submitting…" : "Submit"}
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
+          )}
 
-      {/* Entries list */}
-      <div className="space-y-3">
-        {entries.length === 0 && !showForm && (
-          <div className="text-center py-12 text-sm text-[var(--color-text-muted)]">
-            No standups submitted yet today
-          </div>
-        )}
-        {entries.map((entry) => (
-          <StandupCard key={entry.id} entry={entry} isMyEntry={entry.person_id === myPersonId} />
-        ))}
-      </div>
-    </>
-  );
-}
+          {/* Previous standup reference */}
+          {prevEntry && step > 0 && step < 4 && (
+            <>
+              <div style={{ height: 1, background: "var(--border)", margin: "24px 0" }} />
+              <div className="section-label">Your last standup</div>
+              <div style={{ background: "var(--bg)", borderRadius: 11, padding: 14, border: "1px solid var(--border)" }}>
+                {prevEntry.yesterday_text && (
+                  <>
+                    <div style={{ fontSize: 10, fontWeight: 600, color: "var(--t3)", marginBottom: 2 }}>Yesterday I moved forward</div>
+                    <div style={{ fontSize: 12, color: "var(--t2)", marginBottom: 8, lineHeight: 1.4 }}>&ldquo;{prevEntry.yesterday_text}&rdquo;</div>
+                  </>
+                )}
+                {prevEntry.today_text && (
+                  <>
+                    <div style={{ fontSize: 10, fontWeight: 600, color: "var(--t3)", marginBottom: 2 }}>Today I was focused on</div>
+                    <div style={{ fontSize: 12, color: "var(--t2)", marginBottom: 8, lineHeight: 1.4 }}>&ldquo;{prevEntry.today_text}&rdquo;</div>
+                  </>
+                )}
+                {prevEntry.blocked_text && (
+                  <>
+                    <div style={{ fontSize: 10, fontWeight: 600, color: "var(--t3)", marginBottom: 2 }}>Blocked</div>
+                    <div style={{ fontSize: 12, color: "var(--amber)", lineHeight: 1.4 }}>&ldquo;{prevEntry.blocked_text}&rdquo;</div>
+                  </>
+                )}
+              </div>
+            </>
+          )}
 
-function StandupCard({ entry, isMyEntry }: { entry: StandupEntry; isMyEntry: boolean }) {
-  const deptColour = entry.person?.department
-    ? DEPT_COLOURS[entry.person.department]
-    : "var(--color-signal-grey)";
-
-  return (
-    <div
-      className={cn(
-        "rounded-xl bg-white border p-4",
-        isMyEntry ? "border-[var(--color-brand-teal)]/40" : "border-[var(--color-border)]"
-      )}
-    >
-      <div className="flex items-center gap-2.5 mb-3">
-        <span
-          className="h-7 w-7 rounded-full flex items-center justify-center text-white text-xs font-semibold shrink-0"
-          style={{ background: deptColour }}
-        >
-          {entry.person ? initials(entry.person.full_name) : "?"}
-        </span>
-        <div className="flex items-center gap-2 flex-1 min-w-0">
-          <span className="text-sm font-medium text-[var(--color-text-primary)]">
-            {entry.person?.full_name ?? "Unknown"}
-          </span>
-          {isMyEntry && (
-            <CheckCircle className="h-3.5 w-3.5 text-[var(--color-brand-teal)]" />
+          {/* All standups (for PM view) */}
+          {(step === 0 || step === 4 || hasSubmitted) && entries.length > 0 && (
+            <>
+              <div style={{ height: 1, background: "var(--border)", margin: "24px 0" }} />
+              <div className="section-label">Standups logged today</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                {entries.map((entry) => {
+                  const av = getAv(entry.person?.full_name ?? "X");
+                  return (
+                    <div key={entry.id} style={{
+                      background: "var(--surface)", borderRadius: 10,
+                      border: "1px solid var(--border)", padding: "12px 14px",
+                      display: "flex", alignItems: "flex-start", gap: 10,
+                    }}>
+                      <div style={{
+                        width: 28, height: 28, borderRadius: "50%",
+                        background: av.bg, color: av.color,
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        fontSize: 10, fontWeight: 600, flexShrink: 0,
+                      }}>
+                        {getInitials(entry.person?.full_name ?? "?")}
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: 12, fontWeight: 600, color: "var(--t1)", marginBottom: 2 }}>
+                          {entry.person?.full_name ?? "Unknown"}
+                        </div>
+                        {entry.today_text && (
+                          <div style={{ fontSize: 11, color: "var(--t2)", lineHeight: 1.4 }}>&ldquo;{entry.today_text}&rdquo;</div>
+                        )}
+                        {entry.blocked_text && (
+                          <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 4, fontSize: 10, color: "var(--red)", fontWeight: 600 }}>
+                            ⚠ Blocked: {entry.blocked_text}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
           )}
         </div>
-      </div>
-
-      <div className="space-y-2.5">
-        {entry.yesterday_text && (
-          <div>
-            <p className="text-[10px] font-medium uppercase tracking-wider text-[var(--color-text-muted)] mb-0.5">Yesterday</p>
-            <p className="text-sm text-[var(--color-text-secondary)]">{entry.yesterday_text}</p>
-          </div>
-        )}
-        {entry.today_text && (
-          <div>
-            <p className="text-[10px] font-medium uppercase tracking-wider text-[var(--color-text-muted)] mb-0.5">Today</p>
-            <p className="text-sm text-[var(--color-text-secondary)]">{entry.today_text}</p>
-          </div>
-        )}
-        {entry.blocked_text && (
-          <div>
-            <p className="text-[10px] font-medium uppercase tracking-wider text-[var(--color-signal-amber)] mb-0.5">Blocked</p>
-            <p className="text-sm text-[var(--color-signal-red)]">{entry.blocked_text}</p>
-          </div>
-        )}
       </div>
     </div>
   );
 }
-
-const textareaCls =
-  "w-full rounded-lg border border-[var(--color-border)] px-3 py-2 text-sm resize-none focus:border-[var(--color-brand-teal)] focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-teal)]/20";

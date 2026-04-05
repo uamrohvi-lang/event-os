@@ -9,9 +9,5 @@ export default async function DashboardPage() {
     .select("*")
     .order("created_at", { ascending: false });
 
-  return (
-    <div className="p-6">
-      <EventsGrid events={events ?? []} />
-    </div>
-  );
+  return <EventsGrid events={events ?? []} />;
 }

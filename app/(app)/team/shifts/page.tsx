@@ -9,9 +9,5 @@ export default async function ShiftsPage() {
     supabase.from("events").select("id, name, start_date, end_date").order("start_date", { ascending: false }),
   ]);
 
-  return (
-    <div className="p-6">
-      <ShiftScheduler people={people ?? []} events={events ?? []} />
-    </div>
-  );
+  return <ShiftScheduler people={people ?? []} events={events ?? []} />;
 }

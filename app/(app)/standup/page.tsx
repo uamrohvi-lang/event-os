@@ -7,14 +7,10 @@ export default async function StandupPage() {
 
   const { data: entries } = await supabase
     .from("standup_entries")
-    .select(`
-      *,
-      person:people(id, full_name, department)
-    `)
+    .select("*, person:people(id, full_name, department)")
     .eq("entry_date", today)
     .order("created_at", { ascending: false });
 
-  // Check if current user's person has submitted
   const { data: { user } } = await supabase.auth.getUser();
   const { data: myPerson } = await supabase
     .from("people")
@@ -22,13 +18,18 @@ export default async function StandupPage() {
     .eq("user_id", user?.id ?? "")
     .maybeSingle();
 
+  const { data: profile } = await supabase
+    .from("users")
+    .select("full_name")
+    .eq("id", user?.id ?? "")
+    .maybeSingle();
+
   return (
-    <div className="p-6">
-      <StandupView
-        entries={entries ?? []}
-        myPersonId={myPerson?.id ?? null}
-        today={today}
-      />
-    </div>
+    <StandupView
+      entries={entries ?? []}
+      myPersonId={myPerson?.id ?? null}
+      today={today}
+      userName={myPerson?.full_name ?? profile?.full_name ?? undefined}
+    />
   );
 }

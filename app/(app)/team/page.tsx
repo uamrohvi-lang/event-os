@@ -9,9 +9,5 @@ export default async function TeamPage() {
     .select("*")
     .order("full_name");
 
-  return (
-    <div className="p-6">
-      <TeamView people={people ?? []} />
-    </div>
-  );
+  return <TeamView people={people ?? []} />;
 }

@@ -62,9 +62,9 @@ export default async function AppLayout({
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-[var(--color-surface-2)]">
+    <div style={{ display: "flex", height: "100vh", overflow: "hidden", background: "var(--bg)" }}>
       <Sidebar orgName={orgName} userEmail={user.email ?? ""} />
-      <main className="flex-1 overflow-y-auto">{children}</main>
+      <main style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column" }}>{children}</main>
     </div>
   );
 }
