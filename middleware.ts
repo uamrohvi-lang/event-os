@@ -31,6 +31,9 @@ export async function middleware(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
 
+  // API routes handle their own auth — never redirect them
+  if (pathname.startsWith("/api/")) return supabaseResponse;
+
   // Public routes that don't require auth
   const isAuthRoute =
     pathname.startsWith("/auth/") || pathname === "/login" || pathname === "/register";

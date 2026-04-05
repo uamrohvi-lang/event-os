@@ -19,26 +19,31 @@ export default function RegisterPage() {
     setLoading(true);
     setError(null);
 
-    const supabase = createClient();
-
-    const { data, error: signUpError } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: { full_name: fullName, org_name: orgName },
-      },
+    const res = await fetch("/api/auth/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password, fullName, orgName }),
     });
 
-    if (signUpError) {
-      setError(signUpError.message);
+    const data = await res.json();
+
+    if (!res.ok || data.error) {
+      setError(data.error ?? "Registration failed");
       setLoading(false);
       return;
     }
 
-    if (data.user) {
-      router.push("/");
-      router.refresh();
+    // Set the session from tokens returned by the API
+    if (data.access_token) {
+      const supabase = createClient();
+      await supabase.auth.setSession({
+        access_token: data.access_token,
+        refresh_token: data.refresh_token,
+      });
     }
+
+    router.push("/");
+    router.refresh();
   }
 
   return (
